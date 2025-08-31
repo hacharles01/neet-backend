@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?
+  role      Role
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  NORMAL
+}
+
+model Application {
+  id        Int               @id @default(autoincrement())
+  message   String?
+  status    ApplicationStatus @default(PENDING)
+  appliedAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  // Registration Type
+  registrationType RegistrationType
+
+  // Personal Information
+  firstName   String
+  lastName    String
+  nationalId  String   @unique
+  gender      Gender
+  dateOfBirth DateTime
+  telephone   String
+  email       String?
+
+  // Location
+  province String
+  district String
+  sector   String
+  cell     String
+  village  String
+
+  // Education
+  educationLevel String
+
+  // Skills/Professions
+  primarySkill   String
+  secondarySkill String?
+  tertiarySkill  String?
+  otherSkills    String?
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum RegistrationType {
+  KWIGA_IMYUGA
+  GUSHAKIRWA_AKAZI
+}
+
+enum Gender {
+  GABO
+  GORE
+}
