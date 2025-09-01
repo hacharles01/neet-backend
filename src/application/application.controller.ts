@@ -8,11 +8,13 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { ApplicationService } from './application.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApplicationStatus } from '@prisma/client';
 
 @ApiTags('Applications')
 @Controller('applications')
@@ -30,10 +32,19 @@ export class ApplicationController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get all applications' })
+  @ApiOperation({ summary: 'Get all applications with pagination, search, and status filter' })
   @ApiResponse({ status: 200, description: 'Applications retrieved successfully' })
-  findAll() {
-    return this.applicationService.findAll();
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 5 })
+  @ApiQuery({ name: 'search', required: false, type: String, example: 'John' })
+  @ApiQuery({ name: 'status', required: false, enum: ['All', ...Object.values(ApplicationStatus)] })
+  findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '100',
+    @Query('search') search?: string,
+    @Query('status') status?: ApplicationStatus | 'All',
+  ) {
+    return this.applicationService.findAll(+page, +limit, search, status as ApplicationStatus);
   }
 
   @Get(':id')

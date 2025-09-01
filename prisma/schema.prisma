@@ -71,6 +71,7 @@ enum ApplicationStatus {
   ACCEPTED
   REJECTED
   CANCELLED
+  All
 }
 
 enum RegistrationType {
