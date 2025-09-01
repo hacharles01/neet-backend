@@ -11,11 +11,10 @@ export class ApplicationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly errorHandler: ErrorHandlerService,
-  ) {}
+  ) { }
 
   async create(createApplicationDto: CreateApplicationDto) {
     try {
-      // Check if application with same nationalId exists
       const existingApplication = await this.prisma.application.findUnique({
         where: { nationalId: createApplicationDto.nationalId },
       });
@@ -42,21 +41,129 @@ export class ApplicationService {
     }
   }
 
-  async findAll() {
-    try {
-      const applications = await this.prisma.application.findMany({
-        orderBy: { appliedAt: 'desc' },
-      });
-      return createSuccessResponse('Applications retrieved successfully', applications);
-    } catch (error) {
-      return this.errorHandler.handleError(
-        error,
-        'ApplicationService',
-        'findAll',
-        'Failed to retrieve applications',
-      );
+  // async findAll(
+  //   page: number = 1,
+  //   limit: number = 1000,
+  //   search?: string,
+  //   status?: ApplicationStatus,
+  // ) {
+  //   try {
+  //     const skip = (page - 1) * limit;
+  //     const where: any = {};
+
+  //     // Build search conditions only if search term is provided
+  //     if (search && search.trim()) {
+  //       const searchTerm = search.trim();
+
+  //       where.OR = [
+  //         { firstName: { contains: searchTerm, mode: 'insensitive' } },
+  //         { lastName: { contains: searchTerm, mode: 'insensitive' } },
+  //         { email: { contains: searchTerm, mode: 'insensitive' } },
+  //         { nationalId: { contains: searchTerm, mode: 'insensitive' } },
+  //         { registrationType: { contains: searchTerm, mode: 'insensitive' } },
+
+  //       ];
+  //     }
+
+  //     // Add status filter if provided and valid
+  //     if (status && status !== 'All') {
+  //       where.status = status;
+  //     }
+
+  //     // Execute queries
+  //     const [applications, total] = await Promise.all([
+  //       this.prisma.application.findMany({
+  //         where,
+  //         orderBy: { appliedAt: 'desc' },
+  //         skip,
+  //         take: limit,
+  //       }),
+  //       this.prisma.application.count({ where }),
+  //     ]);
+
+  //     return createSuccessResponse('Applications retrieved successfully', {
+  //       applications,
+  //       total,
+  //       page,
+  //       limit,
+  //       totalPages: Math.ceil(total / limit),
+  //       hasNextPage: page < Math.ceil(total / limit),
+  //       hasPrevPage: page > 1,
+  //     });
+  //   } catch (error) {
+  //     console.error('Error in findAll:', error);
+  //     return this.errorHandler.handleError(
+  //       error,
+  //       'ApplicationService',
+  //       'findAll',
+  //       'Failed to retrieve applications',
+  //     );
+  //   }
+  // }
+
+  async findAll(
+      page: number = 1,
+      limit: number = 1000,
+      search?: string,
+      status?: ApplicationStatus,
+    ) {
+      try {
+        const skip = (page - 1) * limit;
+        const where: any = { AND: [] }; 
+
+        // Add status filter if provided and valid
+        if (status && status !== 'All') {
+          where.AND.push({ status }); 
+        }
+
+        // Build search conditions only if search term is provided
+        if (search && search.trim()) {
+          const searchTerm = search.trim();
+          const searchConditions = {
+            OR: [
+              { firstName: { contains: searchTerm, mode: 'insensitive' } },
+              { lastName: { contains: searchTerm, mode: 'insensitive' } },
+              { email: { contains: searchTerm, mode: 'insensitive' } },
+              { nationalId: { contains: searchTerm, mode: 'insensitive' } },
+              { registrationType: { contains: searchTerm, mode: 'insensitive' } },
+            ],
+          };
+          where.AND.push(searchConditions); 
+        }
+
+    
+        // Execute queries
+        const [applications, total] = await Promise.all([
+          this.prisma.application.findMany({
+            where: where.AND.length > 0 ? where : {}, 
+            orderBy: { appliedAt: 'desc' },
+            skip,
+            take: limit,
+          }),
+          this.prisma.application.count({
+            where: where.AND.length > 0 ? where : {},
+          }),
+        ]);
+
+        return createSuccessResponse('Applications retrieved successfully', {
+          applications,
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page < Math.ceil(total / limit),
+          hasPrevPage: page > 1,
+        });
+      } catch (error) {
+        console.error('Error in findAll:', error);
+        return this.errorHandler.handleError(
+          error,
+          'ApplicationService',
+          'findAll',
+          'Failed to retrieve applications',
+        );
+      }
     }
-  }
 
   async findOne(id: number) {
     try {
@@ -89,7 +196,6 @@ export class ApplicationService {
         return notFoundError('Application not found');
       }
 
-      // Check if new nationalId is unique (if provided)
       if (updateApplicationDto.nationalId && updateApplicationDto.nationalId !== existingApplication.nationalId) {
         const duplicateNationalId = await this.prisma.application.findUnique({
           where: { nationalId: updateApplicationDto.nationalId },
